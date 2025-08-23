@@ -1,7 +1,8 @@
 // src/components/common/Text.js - Professional Reusable Text Component
 import React from 'react';
 import { Text as RNText } from 'react-native';
-import { colors, typography } from '../../styles';
+import colors from '../../styles/base/colors';
+import typography from '../../styles/base/typography';
 
 const Text = ({ 
   children, 

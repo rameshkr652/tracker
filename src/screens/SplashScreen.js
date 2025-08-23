@@ -3,7 +3,8 @@ import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { Screen, Text, Button } from '../components';
-import { colors, spacing } from '../styles';
+import colors from '../styles/base/colors';
+import { spacing } from '../styles/base/spacing';
 
 const SplashScreen = () => {
   

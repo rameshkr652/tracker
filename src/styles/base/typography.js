@@ -1,9 +1,9 @@
 // src/styles/base/typography.js - Professional Typography System
 export const typography = {
   // Font Families
-  headerFont: 'System',         // iOS: SF Pro, Android: Roboto
-  bodyFont: 'System',           // System default
-  monospaceFont: 'monospace',   // For numbers/amounts
+  headerFont: 'System',
+  bodyFont: 'System',
+  monospaceFont: 'monospace',
   
   // Font Weights
   weights: {
@@ -95,7 +95,6 @@ export const typography = {
     fontWeight: '600',
     lineHeight: 24,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
   },
   
   buttonMedium: {
@@ -103,7 +102,6 @@ export const typography = {
     fontWeight: '600',
     lineHeight: 20,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
   },
   
   buttonSmall: {
@@ -111,7 +109,6 @@ export const typography = {
     fontWeight: '600',
     lineHeight: 16,
     letterSpacing: 0.5,
-    textTransform: 'uppercase',
   },
   
   // Financial/Number Specific Styles
@@ -148,3 +145,35 @@ export const typography = {
   },
   
   cardSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 20,
+    letterSpacing: 0,
+  },
+  
+  cardNumber: {
+    fontSize: 16,
+    fontWeight: '500',
+    fontFamily: 'monospace',
+    lineHeight: 22,
+    letterSpacing: 2,
+  },
+  
+  // Navigation Typography
+  navTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    lineHeight: 24,
+    letterSpacing: 0,
+  },
+  
+  // Form Typography
+  inputText: {
+    fontSize: 16,
+    fontWeight: '400',
+    lineHeight: 24,
+    letterSpacing: 0,
+  },
+};
+
+export default typography;

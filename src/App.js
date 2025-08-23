@@ -2,7 +2,7 @@
 import React from 'react';
 import { StatusBar } from 'react-native';
 import SplashScreen from './screens/SplashScreen';
-import { colors } from './styles';
+import colors from './styles/base/colors';
 
 const App = () => {
   return (

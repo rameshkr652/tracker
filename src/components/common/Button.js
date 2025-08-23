@@ -3,7 +3,8 @@ import React from 'react';
 import { TouchableOpacity, ActivityIndicator, View } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Text from './Text';
-import { colors, spacing, getShadow } from '../../styles';
+import colors from '../../styles/base/colors';
+import { spacing, getShadow } from '../../styles/base/spacing';
 
 const Button = ({
   children,
