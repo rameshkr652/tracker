@@ -1,17 +1,18 @@
-// src/App.js - Main App Entry Point
+// src/App.js - Professional App Entry Point with React Navigation
 import React from 'react';
 import { StatusBar } from 'react-native';
-import SplashScreen from './screens/SplashScreen';
-import colors from './styles/base/colors';
+import AppNavigator from './navigation/AppNavigator';
+import { colors } from './styles';
 
 const App = () => {
   return (
     <>
       <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor={colors.backgroundColor} 
+        barStyle="light-content" 
+        backgroundColor={colors.primaryColor}
+        translucent={false}
       />
-      <SplashScreen />
+      <AppNavigator />
     </>
   );
 };

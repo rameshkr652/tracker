@@ -1,34 +1,30 @@
-// src/screens/SplashScreen.js - Beautiful Splash Screen
-import React, { useEffect } from 'react';
+// src/screens/SplashScreen.js - Splash Screen with Navigation
+import React from 'react';
 import { View } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { Screen, Text, Button } from '../components';
-import colors from '../styles/base/colors';
-import { spacing } from '../styles/base/spacing';
+import { colors, spacing } from '../styles';
 
-const SplashScreen = () => {
+const SplashScreen = ({ navigation }) => {
   
   const handleGetStarted = () => {
-    // TODO: Navigate to SMS Permission Screen
-    console.log('Get Started pressed');
+    navigation.navigate('SMSPermission');
   };
 
   return (
     <LinearGradient
       colors={[colors.primaryColor, colors.secondaryColor]}
       style={{ flex: 1 }}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
     >
-      <Screen safe>
+      <Screen safe style={{ backgroundColor: 'transparent' }}>
+        
         <View style={{ 
           flex: 1, 
           justifyContent: 'center', 
           alignItems: 'center',
-          paddingHorizontal: spacing.lg,
         }}>
           
-          {/* App Logo/Icon Area */}
+          {/* App Logo */}
           <View style={{
             width: 100,
             height: 100,
@@ -59,31 +55,31 @@ const SplashScreen = () => {
             variant="h4" 
             color="white" 
             align="center"
-            weight="400"
             style={{ 
               marginBottom: spacing.xl,
               opacity: 0.9,
-              lineHeight: 28,
             }}
           >
             Your SMS knows your debt.{'\n'}We solve it.
           </Text>
 
-          {/* Features List */}
+          {/* Features */}
           <View style={{ marginBottom: spacing.xxl }}>
-            <FeatureItem text="📱 Auto-reads banking SMS" />
-            <FeatureItem text="💰 Tracks all credit cards" />
-            <FeatureItem text="🎯 AI debt strategy" />
-            <FeatureItem text="📊 Real-time analysis" />
+            <Text variant="body1" color="white" style={{ opacity: 0.9, marginVertical: spacing.xs }}>
+              📱 Auto-reads banking SMS
+            </Text>
+            <Text variant="body1" color="white" style={{ opacity: 0.9, marginVertical: spacing.xs }}>
+              💰 Tracks all credit cards
+            </Text>
+            <Text variant="body1" color="white" style={{ opacity: 0.9, marginVertical: spacing.xs }}>
+              🎯 AI debt strategy
+            </Text>
           </View>
 
         </View>
 
-        {/* Bottom Action */}
-        <View style={{ 
-          paddingHorizontal: spacing.lg,
-          paddingBottom: spacing.xl,
-        }}>
+        {/* Bottom Button */}
+        <View style={{ paddingBottom: spacing.xl }}>
           <Button
             title="Get Started"
             variant="secondary"
@@ -114,18 +110,5 @@ const SplashScreen = () => {
     </LinearGradient>
   );
 };
-
-const FeatureItem = ({ text }) => (
-  <View style={{
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: spacing.xs,
-    paddingLeft: spacing.md,
-  }}>
-    <Text variant="body1" color="white" style={{ opacity: 0.9 }}>
-      {text}
-    </Text>
-  </View>
-);
 
 export default SplashScreen;

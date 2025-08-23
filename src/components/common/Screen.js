@@ -1,7 +1,7 @@
-// src/components/common/Screen.js - Simple Screen Wrapper
+// src/components/common/Screen.js - Simple Screen Component
 import React from 'react';
 import { View, ScrollView, SafeAreaView } from 'react-native';
-import { colors, commonStyles } from '../../styles';
+import { colors, spacing } from '../../styles';
 
 const Screen = ({ 
   children, 
@@ -14,13 +14,17 @@ const Screen = ({
   const Content = scroll ? ScrollView : View;
   
   const screenStyle = [
-    commonStyles.screenContainer,
+    {
+      flex: 1,
+      backgroundColor: colors.backgroundColor,
+      paddingHorizontal: spacing.containerPadding,
+    },
     style,
   ];
 
   if (scroll) {
     return (
-      <Container style={commonStyles.safeContainer}>
+      <Container style={{ flex: 1, backgroundColor: colors.backgroundColor }}>
         <ScrollView 
           style={screenStyle}
           showsVerticalScrollIndicator={false}
