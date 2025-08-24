@@ -6,10 +6,11 @@ import { DebtProvider } from '../context/DebtContext';
 
 // Import screens
 import SplashScreen from '../screens/SplashScreen';
+import BankSelectionScreen from '../screens/auth/BankSelectionScreen';
 import SMSPermissionScreen from '../screens/auth/SMSPermissionScreen';
 import SMSScanningScreen from '../screens/auth/SMSScanningScreen';
 import AutoDetectedCardsScreen from '../screens/auth/AutoDetectedCardsScreen';
-import MainDashboardScreen from '../screens/dashboard/MainDashboardScreen';
+import MainTabNavigator from './MainTabNavigator';
 
 const Stack = createStackNavigator();
 
@@ -19,9 +20,9 @@ const AppNavigator = () => {
       <NavigationContainer>
         <Stack.Navigator
           initialRouteName="Splash"
-          screenOptions={{
+          screenOptions={({ route }) => ({
             headerShown: false,
-            gestureEnabled: true,
+            gestureEnabled: route.name !== 'MainTabs', // Disable swipe for MainTabs
             cardStyleInterpolator: ({ current, layouts }) => {
               return {
                 cardStyle: {
@@ -36,27 +37,34 @@ const AppNavigator = () => {
                 },
               };
             },
-          }}
+          })}
         >
-          <Stack.Screen 
-            name="Splash" 
-            component={SplashScreen} 
+          <Stack.Screen
+            name="Splash"
+            component={SplashScreen}
           />
-          <Stack.Screen 
-            name="SMSPermission" 
-            component={SMSPermissionScreen} 
+          <Stack.Screen
+            name="BankSelection"
+            component={BankSelectionScreen}
           />
-          <Stack.Screen 
-            name="SMSScanning" 
-            component={SMSScanningScreen} 
+          <Stack.Screen
+            name="SMSPermission"
+            component={SMSPermissionScreen}
           />
-          <Stack.Screen 
-            name="AutoDetectedCards" 
-            component={AutoDetectedCardsScreen} 
+          <Stack.Screen
+            name="SMSScanning"
+            component={SMSScanningScreen}
           />
-          <Stack.Screen 
-            name="MainDashboard" 
-            component={MainDashboardScreen} 
+          <Stack.Screen
+            name="AutoDetectedCards"
+            component={AutoDetectedCardsScreen}
+          />
+          <Stack.Screen
+            name="MainTabs"
+            component={MainTabNavigator}
+            options={{
+              gestureEnabled: false, // Explicitly disable swipe gestures for MainTabs
+            }}
           />
         </Stack.Navigator>
       </NavigationContainer>

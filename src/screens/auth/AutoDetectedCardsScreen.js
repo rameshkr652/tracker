@@ -7,7 +7,7 @@ import { colors, spacing } from '../../styles';
 import { useDebt } from '../../context/DebtContext';
 
 const AutoDetectedCardsScreen = ({ navigation, route }) => {
-  const { setCreditCards, setTransactions } = useDebt();
+  const { setCreditCards, setTransactions, setAppState } = useDebt();
   const [selectedCards, setSelectedCards] = useState(new Set());
   const [animatedValues] = useState({});
   
@@ -46,16 +46,22 @@ const AutoDetectedCardsScreen = ({ navigation, route }) => {
   const handleContinue = async () => {
     // Filter selected cards and their transactions
     const selectedCardsList = cards.filter(card => selectedCards.has(card.id));
-    const selectedTransactions = transactions.filter(transaction => 
+    const selectedTransactions = transactions.filter(transaction =>
       selectedCards.has(transaction.cardId)
     );
 
     // Save to context and storage
     await setCreditCards(selectedCardsList);
     await setTransactions(selectedTransactions);
+    
+    // Mark onboarding as complete
+    await setAppState({
+      hasCompletedOnboarding: true,
+      hasParsedSMS: true
+    });
 
-    // Navigate to dashboard
-    navigation.navigate('MainDashboard');
+    // Navigate to main tabs (dashboard)
+    navigation.replace('MainTabs');
   };
 
   const formatCurrency = (amount) => {

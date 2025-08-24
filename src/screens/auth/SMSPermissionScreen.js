@@ -1,5 +1,5 @@
 // src/screens/auth/SMSPermissionScreen.js - Professional SMS Permission Screen
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, PermissionsAndroid, Platform } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { Screen, Text, Button, Card } from '../../components';
@@ -8,6 +8,36 @@ import { colors, spacing } from '../../styles';
 const SMSPermissionScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [checkingPermission, setCheckingPermission] = useState(true);
+
+  // Check current permission status on component mount
+  useEffect(() => {
+    checkCurrentPermissions();
+  }, []);
+
+  const checkCurrentPermissions = async () => {
+    if (Platform.OS !== 'android') {
+      setCheckingPermission(false);
+      setPermissionDenied(true);
+      return;
+    }
+
+    try {
+      const readPermission = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_SMS);
+      const receivePermission = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECEIVE_SMS);
+
+      if (readPermission && receivePermission) {
+        // Already have permissions, navigate directly to SMS scanning
+        navigation.replace('SMSScanning');
+      } else {
+        // Need to request permissions
+        setCheckingPermission(false);
+      }
+    } catch (error) {
+      console.log('Permission check error:', error);
+      setCheckingPermission(false);
+    }
+  };
 
   const requestSMSPermission = async () => {
     if (Platform.OS !== 'android') {
@@ -28,8 +58,8 @@ const SMSPermissionScreen = ({ navigation }) => {
       const receiveGranted = results['android.permission.RECEIVE_SMS'] === 'granted';
 
       if (readGranted && receiveGranted) {
-        // Navigate directly to SMS scanning screen
-        navigation.navigate('SMSScanning');
+        // Navigate to SMS scanning screen
+        navigation.replace('SMSScanning');
       } else {
         setPermissionDenied(true);
       }
@@ -40,6 +70,38 @@ const SMSPermissionScreen = ({ navigation }) => {
       setLoading(false);
     }
   };
+
+  if (checkingPermission) {
+    return (
+      <LinearGradient
+        colors={[colors.primaryColor, colors.secondaryColor]}
+        style={{ flex: 1 }}
+      >
+        <Screen safe style={{ backgroundColor: 'transparent' }}>
+          <View style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}>
+            <View style={{
+              width: 80,
+              height: 80,
+              borderRadius: 40,
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: spacing.lg,
+            }}>
+              <Text style={{ fontSize: 36 }}>⚡</Text>
+            </View>
+            <Text variant="h4" color="white" weight="600" align="center">
+              Checking Permissions...
+            </Text>
+          </View>
+        </Screen>
+      </LinearGradient>
+    );
+  }
 
   if (permissionDenied) {
     return (

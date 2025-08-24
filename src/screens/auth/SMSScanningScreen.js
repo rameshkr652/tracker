@@ -19,8 +19,43 @@ const SMSScanningScreen = ({ navigation }) => {
   const progressAnim = new Animated.Value(0);
 
   useEffect(() => {
-    startSMSScanning();
+    checkAndStartSMSScanning();
   }, []);
+
+  const checkAndStartSMSScanning = async () => {
+    try {
+      // Check if SMS has already been parsed
+      const existingCards = await StorageService.getCreditCards();
+      const lastScan = await StorageService.getLastSMSScan();
+      
+      if (existingCards.length > 0) {
+        // Already have cards, check if scan was recent (within 24 hours)
+        const twentyFourHoursAgo = new Date();
+        twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+        
+        if (lastScan && new Date(lastScan) > twentyFourHoursAgo) {
+          // Recent scan exists, skip to results
+          setCurrentStep('Using existing data...');
+          setProgress(100);
+          
+          setTimeout(async () => {
+            const existingTransactions = await StorageService.getTransactions();
+            navigation.navigate('AutoDetectedCards', {
+              cards: existingCards,
+              transactions: existingTransactions,
+            });
+          }, 1000);
+          return;
+        }
+      }
+      
+      // No recent data, start fresh scanning
+      startSMSScanning();
+    } catch (error) {
+      console.error('Error checking existing data:', error);
+      startSMSScanning();
+    }
+  };
 
   useEffect(() => {
     Animated.timing(progressAnim, {

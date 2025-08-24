@@ -12,7 +12,7 @@ class SMSReader {
    */
   static async getAllSMS(useTestData = false) {
     // For testing purposes, return test data if requested
-    if (useTestData || __DEV__) {
+    if (useTestData) {
       console.log('Using test SMS data for development');
       return [...testSMSData, ...generateBankingSMS(20)];
     }
