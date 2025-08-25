@@ -1,4 +1,4 @@
-// src/services/sms/SMSReader.js - Improved SMS Reading Service
+// src/services/sms/SMSReader.js - Fixed SMS Reading Service
 import SmsAndroid from 'react-native-get-sms-android';
 import { Platform } from 'react-native';
 import { testSMSData, generateBankingSMS } from '../../utils/helpers/smsTestData';
@@ -12,22 +12,20 @@ class SMSReader {
    */
   static async getAllSMS(useTestData = false) {
     // For testing purposes, return test data if requested
-    if (useTestData) {
+    if (useTestData || Platform.OS !== 'android') {
       console.log('Using test SMS data for development');
       return [...testSMSData, ...generateBankingSMS(20)];
     }
 
     return new Promise((resolve, reject) => {
-      if (Platform.OS !== 'android') {
-        console.log('SMS reading not supported on iOS, using test data');
-        resolve([...testSMSData, ...generateBankingSMS(10)]);
-        return;
-      }
+      const minDate = new Date();
+      minDate.setFullYear(minDate.getFullYear() - 2); // Last 2 years
 
       const filter = {
         box: 'inbox',
-        maxCount: 5000, // Reduced to prevent memory issues
+        maxCount: 3000, // Reduced to prevent memory issues
         indexFrom: 0,
+        minDate: minDate.getTime(),
       };
 
       try {
@@ -89,52 +87,35 @@ class SMSReader {
       return [];
     }
 
-    // Enhanced banking keywords with Indian banking context
-    const bankingKeywords = [
-      // Transaction keywords
-      'spent', 'paid', 'charged', 'debited', 'credited', 'transaction', 'purchase',
-      'payment', 'transfer', 'withdrawal', 'deposit', 'balance', 'available',
+    // Enhanced banking keywords focusing on credit cards
+    const creditCardKeywords = [
+      // Credit card specific terms
+      'credit card', 'cc ', 'spent', 'charged', 'debited', 'payment received',
+      'outstanding', 'credit limit', 'available limit', 'statement generated',
+      'total due', 'minimum due', 'min due', 'payment due', 'bill generated',
+      'card ending', 'card xxxx', 'card ****', 'cr card', 'transaction on card',
+      'debited on card', 'credited to card', 'txn alert', 'transaction alert',
+      'cashback', 'points', 'rewards', 'emi', 'overdue', 'late fee',
       
-      // Credit card specific
-      'credit card', 'card', 'limit', 'outstanding', 'due', 'minimum due',
-      'statement', 'bill', 'overdue', 'interest', 'late fee', 'total due',
-      'min due', 'payment due', 'total amt', 'min amt', 'pay by',
+      // Transaction indicators with amounts
+      'rs.', 'rs ', 'inr', '₹', 'rupees',
       
-      // Currency indicators
-      'rs.', 'rs ', 'inr', '₹', 'rupees', 'dr.', 'cr.',
-      
-      // Banking terms
-      'account', 'bank', 'atm', 'pos', 'online', 'upi', 'imps', 'neft', 'rtgs',
-      'bharat bill payment', 'reward', 'cashback', 'points',
-      
-      // Indian banks
-      'hdfc', 'icici', 'sbi', 'axis', 'kotak', 'indusind', 'yes bank',
-      
-      // Card networks
-      'visa', 'mastercard', 'rupay', 'amex'
+      // Card number patterns
+      'xx', 'XX', '****', 'ending',
     ];
 
     // Enhanced bank sender patterns (case insensitive)
     const bankSenderPatterns = [
       // Common Indian bank SMS sender formats
-      /^(?:AD|VM|BZ|DM|TM|AX|VK|BP)-[A-Z]{5,6}$/i, // Pattern like AD-HDFCBK
+      /^(?:AD|VM|BZ|DM|TM|AX|VK|BP)-[A-Z]{5,8}$/i, // Pattern like AD-HDFCBK
       /^[A-Z]{2,5}[0-9]{4,5}$/i, // Pattern like HDFC1234
-      /^[A-Z]{5,8}$/i, // Pattern like HDFCBANK
+      /^[A-Z]{5,10}$/i, // Pattern like HDFCBANK
       
       // Major Indian banks
-      /hdfc/i, /icici/i, /sbi/i, /axis/i, /kotak/i, /pnb/i, /bob/i, /canara/i,
-      /union/i, /indian/i, /central/i, /syndicate/i, /oriental/i, /allahabad/i,
-      /andhra/i, /karnataka/i, /maharashtra/i, /punjab/i, /rajasthan/i,
-      
-      // Credit card companies
-      /visa/i, /mastercard/i, /rupay/i, /amex/i, /american.express/i,
-      
-      // Fintech and digital banks
-      /paytm/i, /phonepe/i, /googlepay/i, /amazon.pay/i, /mobikwik/i,
-      /freecharge/i, /airtel/i, /jio/i, /idea/i, /vodafone/i,
-      
-      // Generic banking patterns
-      /.*bank.*/i, /.*card.*/i, /.*pay.*/i, /.*wallet.*/i,
+      /hdfc/i, /icici/i, /sbi.*card/i, /axis/i, /kotak/i, /amex/i, /citi/i,
+      /standard.*chartered/i, /hsbc/i, /indus/i, /yes.*bank/i,
+      /scbank/i, /idfc/i, /rbl/i, /federal/i, /dbs/i, /barclays/i,
+      /boi/i, /pnb/i, /canara/i, /union/i, /bob/i, /idbi/i,
     ];
 
     return smsMessages.filter(sms => {
@@ -150,31 +131,47 @@ class SMSReader {
         pattern.test(sender)
       );
 
-      // Check if message contains banking keywords
-      const containsBankingKeywords = bankingKeywords.some(keyword => 
+      // Check if message contains credit card keywords
+      const containsCreditCardKeywords = creditCardKeywords.some(keyword => 
         body.includes(keyword.toLowerCase())
       );
 
-      // Additional checks for credit card patterns
-      const hasCreditCardPattern = (
-        body.includes('xx') || // Card number pattern like xx1234
-        body.includes('XX') || // Card number pattern like XX1234
-        body.includes('****') || // Card number pattern like ****1234
-        /\d{4}/.test(body) && (body.includes('card') || body.includes('due') || body.includes('payment')) // Contains 4 consecutive digits with card context
+      // Enhanced credit card context detection
+      const hasCreditCardContext = (
+        body.includes('credit card') ||
+        body.includes('cr card') ||
+        body.includes('cc ') ||
+        body.includes('card ending') ||
+        body.includes('card xxxx') ||
+        body.includes('card ****') ||
+        body.includes('credit limit') ||
+        body.includes('available credit') ||
+        body.includes('outstanding') ||
+        body.includes('statement') ||
+        body.includes('total due') ||
+        body.includes('minimum due') ||
+        body.includes('txn alert') ||
+        body.includes('transaction alert') ||
+        (body.includes('spent') && body.includes('card')) ||
+        (body.includes('charged') && body.includes('card')) ||
+        (body.includes('debited') && body.includes('card')) ||
+        (body.includes('credited') && body.includes('card'))
       );
 
-      // Additional checks for transaction amounts
-      const hasAmountPattern = (
-        /rs\.?\s*\d+/i.test(body) || // Rs. 1000 or Rs 1000
-        /₹\s*\d+/.test(body) || // ₹1000
-        /inr\s*\d+/i.test(body) || // INR 1000
-        /due\s*(?:of|:)?\s*rs\.?\s*\d+/i.test(body) || // due of Rs. 1000
-        /amount\s*(?:of|:)?\s*rs\.?\s*\d+/i.test(body) || // amount of Rs. 1000
-        /payment\s*(?:of|:)?\s*rs\.?\s*\d+/i.test(body) // payment of Rs. 1000
+      // Exclude debit card and other account SMS
+      const isDebitOrAccount = (
+        body.includes('debit card') ||
+        body.includes('savings account') ||
+        body.includes('current account') ||
+        body.includes('account balance') ||
+        body.includes('upi debit') ||
+        body.includes('withdrawn from atm') ||
+        body.includes('net banking')
       );
 
-      return (isBankingSender || containsBankingKeywords) && 
-             (hasCreditCardPattern || hasAmountPattern);
+      return (isBankingSender || containsCreditCardKeywords) && 
+             hasCreditCardContext && 
+             !isDebitOrAccount;
     });
   }
 
@@ -188,7 +185,10 @@ class SMSReader {
     const parser = new SMSParser();
     const bankingSMS = this.filterBankingSMS(smsMessages);
     
-    console.log(`Found ${bankingSMS.length} banking SMS out of ${smsMessages.length} total`);
+    console.log(`Found ${bankingSMS.length} potential credit card SMS out of ${smsMessages.length} total`);
+    
+    // Sort banking SMS by date descending (newest first)
+    bankingSMS.sort((a, b) => parseInt(b.date) - parseInt(a.date));
     
     // Initialize collections
     const creditCards = {};
@@ -203,22 +203,27 @@ class SMSReader {
     
     for (const sms of bankingSMS) {
       try {
-        // Use enhanced parsing for comprehensive data extraction
-        const parsedData = parser.extractAllInfo(sms);
+        // FIXED: Use the correct parser method
+        const parsedData = parser.extractAllInfo ? 
+          parser.extractAllInfo(sms) : 
+          parser.parseSMS(sms); // Fallback to basic parsing
         
         if (parsedData.success) {
           // Process credit cards
-          if (parsedData.creditCards && parsedData.creditCards.length > 0) {
-            parsedData.creditCards.forEach(card => {
+          const cardsToProcess = parsedData.creditCards || 
+            (parsedData.creditCard ? [parsedData.creditCard] : []);
+            
+          cardsToProcess.forEach(card => {
+            if (card && card.id) {
               const cardId = card.id;
               
               if (!creditCards[cardId]) {
-                creditCards[cardId] = card;
+                creditCards[cardId] = { ...card };
               } else {
                 // Update existing card with new information if newer
                 const existingCard = creditCards[cardId];
-                const existingDate = new Date(existingCard.lastUpdated);
-                const newDate = new Date(card.lastUpdated);
+                const existingDate = new Date(existingCard.lastUpdated || 0);
+                const newDate = new Date(card.lastUpdated || 0);
                 
                 if (newDate >= existingDate) {
                   // Merge card data, preferring non-null values
@@ -233,12 +238,15 @@ class SMSReader {
                   };
                 }
               }
-            });
-          }
+            }
+          });
           
-          // Process transactions - add all unique transactions
-          if (parsedData.transactions && parsedData.transactions.length > 0) {
-            parsedData.transactions.forEach(transaction => {
+          // Process transactions
+          const transactionsToProcess = parsedData.transactions || 
+            (parsedData.transaction ? [parsedData.transaction] : []);
+            
+          transactionsToProcess.forEach(transaction => {
+            if (transaction && transaction.id && transaction.cardId) {
               // Check if this transaction is a duplicate
               const isDuplicate = transactions.some(t => 
                 t.cardId === transaction.cardId &&
@@ -248,28 +256,62 @@ class SMSReader {
               );
               
               if (!isDuplicate) {
-                transactions.push(transaction);
+                // Separate based on type
+                if (transaction.type === 'reminder') {
+                  reminders.push({
+                    id: `rem_${transaction.id}`,
+                    cardId: transaction.cardId,
+                    amount: transaction.amount,
+                    dueDate: transaction.date, // Assuming date is due date for reminders
+                    description: transaction.description,
+                    merchant: transaction.merchant,
+                  });
+                } else if (transaction.type === 'reward') {
+                  rewards.push({
+                    id: `rew_${transaction.id}`,
+                    cardId: transaction.cardId,
+                    amount: transaction.amount,
+                    date: transaction.date,
+                    description: transaction.description,
+                    category: transaction.category,
+                  });
+                } else {
+                  transactions.push(transaction);
+                }
               }
-            });
-          }
+            }
+          });
           
-          // Process statements
-          if (parsedData.statements && parsedData.statements.length > 0) {
-            statements.push(...parsedData.statements);
-          }
+          // Process statements with deduplication
+          const statementsToProcess = parsedData.statements || 
+            (parsedData.statement ? [parsedData.statement] : []);
+            
+          statementsToProcess.forEach(statement => {
+            if (statement && statement.id && statement.cardId) {
+              // Check for duplicate statements
+              const isDuplicate = statements.some(s => 
+                s.cardId === statement.cardId &&
+                s.statementDate === statement.statementDate
+              );
+              
+              if (!isDuplicate) {
+                statements.push(statement);
+              }
+            }
+          });
           
-          // Process reminders
+          // Process other data types if they exist
           if (parsedData.reminders && parsedData.reminders.length > 0) {
             reminders.push(...parsedData.reminders);
           }
           
-          // Process rewards
           if (parsedData.rewards && parsedData.rewards.length > 0) {
             rewards.push(...parsedData.rewards);
           }
         }
       } catch (error) {
         console.error('Error processing SMS:', error);
+        // Continue processing other SMS even if one fails
       }
       
       // Update progress
@@ -290,22 +332,46 @@ class SMSReader {
       (a, b) => new Date(b.date) - new Date(a.date)
     );
     
-    return {
+    // Sort statements by statementDate (newest first)
+    const sortedStatements = statements.sort(
+      (a, b) => new Date(b.statementDate) - new Date(a.statementDate)
+    );
+    
+    // Sort reminders by dueDate (soonest first)
+    const sortedReminders = reminders.sort(
+      (a, b) => new Date(a.dueDate) - new Date(b.dueDate)
+    );
+    
+    // Sort rewards by date (newest first)
+    const sortedRewards = rewards.sort(
+      (a, b) => new Date(b.date) - new Date(a.date)
+    );
+    
+    const result = {
       creditCards: Object.values(creditCards),
       transactions: sortedTransactions,
-      statements,
-      reminders,
-      rewards,
+      statements: sortedStatements,
+      reminders: sortedReminders,
+      rewards: sortedRewards,
       stats: {
         totalSMS: smsMessages.length,
         bankingSMS: bankingSMS.length,
         creditCards: Object.keys(creditCards).length,
-        transactions: transactions.length,
-        statements: statements.length,
-        reminders: reminders.length,
-        rewards: rewards.length,
+        transactions: sortedTransactions.length,
+        statements: sortedStatements.length,
+        reminders: sortedReminders.length,
+        rewards: sortedRewards.length,
       }
     };
+    
+    console.log('📊 SMS Processing Results:', {
+      totalSMS: result.stats.totalSMS,
+      bankingSMS: result.stats.bankingSMS,
+      creditCards: result.stats.creditCards,
+      transactions: result.stats.transactions,
+    });
+    
+    return result;
   }
 
   /**
@@ -316,6 +382,8 @@ class SMSReader {
    */
   static async analyzeSMS(progressCallback = () => {}, useTestData = false) {
     try {
+      console.log('🔍 Starting SMS analysis...');
+      
       // Step 1: Fetch SMS messages
       progressCallback({
         stage: 'fetching',
@@ -324,6 +392,7 @@ class SMSReader {
       });
       
       const smsMessages = await this.getAllSMS(useTestData);
+      console.log(`📱 Retrieved ${smsMessages.length} SMS messages`);
       
       // Step 2: Process SMS messages
       progressCallback({
@@ -347,17 +416,35 @@ class SMSReader {
         stage: 'complete',
         message: 'Analysis complete!',
         progress: 100,
+        foundCards: result.stats.creditCards,
+        foundTransactions: result.stats.transactions,
         stats: result.stats,
       });
       
+      console.log('✅ SMS analysis completed successfully');
       return result;
     } catch (error) {
-      console.error('SMS analysis error:', error);
-      throw error;
+      console.error('❌ SMS analysis error:', error);
+      
+      // Return empty result on error
+      return {
+        creditCards: [],
+        transactions: [],
+        statements: [],
+        reminders: [],
+        rewards: [],
+        stats: {
+          totalSMS: 0,
+          bankingSMS: 0,
+          creditCards: 0,
+          transactions: 0,
+          statements: 0,
+          reminders: 0,
+          rewards: 0,
+        }
+      };
     }
   }
-
-  // Other methods from the original class...
 }
 
 export default SMSReader;

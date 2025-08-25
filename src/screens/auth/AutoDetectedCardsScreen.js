@@ -1,4 +1,4 @@
-// src/screens/auth/AutoDetectedCardsScreen.js - Display Auto-Detected Credit Cards
+// src/screens/auth/AutoDetectedCardsScreen.js - Updated to use new context action
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -7,11 +7,11 @@ import { colors, spacing } from '../../styles';
 import { useDebt } from '../../context/DebtContext';
 
 const AutoDetectedCardsScreen = ({ navigation, route }) => {
-  const { setCreditCards, setTransactions, setAppState } = useDebt();
+  const { updateAfterSMSScanning, markOnboardingComplete } = useDebt(); // UPDATED: Use new action
   const [selectedCards, setSelectedCards] = useState(new Set());
   const [animatedValues] = useState({});
   
-  // Get cards and transactions from route params or context
+  // Get cards and transactions from route params
   const cards = route.params?.cards || [];
   const transactions = route.params?.transactions || [];
 
@@ -43,25 +43,34 @@ const AutoDetectedCardsScreen = ({ navigation, route }) => {
     setSelectedCards(newSelected);
   };
 
+  // UPDATED: Use the new context action for batch updates
   const handleContinue = async () => {
-    // Filter selected cards and their transactions
-    const selectedCardsList = cards.filter(card => selectedCards.has(card.id));
-    const selectedTransactions = transactions.filter(transaction =>
-      selectedCards.has(transaction.cardId)
-    );
+    try {
+      // Filter selected cards and their transactions
+      const selectedCardsList = cards.filter(card => selectedCards.has(card.id));
+      const selectedTransactions = transactions.filter(transaction =>
+        selectedCards.has(transaction.cardId)
+      );
 
-    // Save to context and storage
-    await setCreditCards(selectedCardsList);
-    await setTransactions(selectedTransactions);
-    
-    // Mark onboarding as complete
-    await setAppState({
-      hasCompletedOnboarding: true,
-      hasParsedSMS: true
-    });
+      console.log('💾 Saving selected cards and transactions...');
+      console.log('   - Cards:', selectedCardsList.length);
+      console.log('   - Transactions:', selectedTransactions.length);
 
-    // Navigate to main tabs (dashboard)
-    navigation.replace('MainTabs');
+      // UPDATED: Use the new batch update action
+      await updateAfterSMSScanning(selectedCardsList, selectedTransactions);
+      
+      // Mark onboarding as complete
+      await markOnboardingComplete();
+
+      console.log('✅ SMS scanning completed successfully');
+
+      // Navigate to main tabs (dashboard)
+      navigation.replace('MainTabs');
+    } catch (error) {
+      console.error('❌ Error saving SMS data:', error);
+      // Still navigate but show error
+      navigation.replace('MainTabs');
+    }
   };
 
   const formatCurrency = (amount) => {
@@ -74,15 +83,12 @@ const AutoDetectedCardsScreen = ({ navigation, route }) => {
   };
 
   const getBankLogo = (bankName) => {
-    // Simple emoji mapping for banks
     const bankLogos = {
       'HDFC Bank': '🏦',
       'ICICI Bank': '🏛️',
-      'SBI': '🏪',
+      'SBI Card': '🏪', // UPDATED: SBI Card instead of SBI
       'Axis Bank': '🏢',
       'Kotak Mahindra Bank': '🏬',
-      'Yes Bank': '🏭',
-      'IndusInd Bank': '🏘️',
       'American Express': '💳',
       'Citibank': '🏦',
       'Standard Chartered': '🏛️',
@@ -97,13 +103,11 @@ const AutoDetectedCardsScreen = ({ navigation, route }) => {
       ['#4facfe', '#00f2fe'],
       ['#43e97b', '#38f9d7'],
       ['#fa709a', '#fee140'],
-      ['#a8edea', '#fed6e3'],
-      ['#ff9a9e', '#fecfef'],
-      ['#ffecd2', '#fcb69f'],
     ];
     return cardColors[index % cardColors.length];
   };
 
+  // Show no cards found screen
   if (cards.length === 0) {
     return (
       <LinearGradient
@@ -160,13 +164,13 @@ const AutoDetectedCardsScreen = ({ navigation, route }) => {
               marginBottom: spacing.xl,
             }}>
               <Text variant="body2" color="white" style={{ marginBottom: spacing.sm }}>
-                • You don't have credit card transaction SMS
+                • No recent credit card transactions found
               </Text>
               <Text variant="body2" color="white" style={{ marginBottom: spacing.sm }}>
-                • Your bank uses different SMS formats
+                • Only debit card or savings account SMS found
               </Text>
               <Text variant="body2" color="white">
-                • SMS messages are too old or deleted
+                • SMS messages don't match credit card patterns
               </Text>
             </View>
 
@@ -180,6 +184,21 @@ const AutoDetectedCardsScreen = ({ navigation, route }) => {
                 backgroundColor: 'rgba(255,255,255,0.95)',
               }}
               textStyle={{ color: colors.primaryColor }}
+            />
+
+            <Button
+              title="Skip for Now"
+              variant="ghost"
+              size="large"
+              fullWidth
+              onPress={async () => {
+                await markOnboardingComplete();
+                navigation.replace('MainTabs');
+              }}
+              style={{
+                marginTop: spacing.md,
+              }}
+              textStyle={{ color: 'white' }}
             />
 
           </View>
@@ -207,7 +226,7 @@ const AutoDetectedCardsScreen = ({ navigation, route }) => {
             align="center"
             style={{ marginBottom: spacing.sm }}
           >
-            🎉 Cards Detected!
+            🎉 Credit Cards Found!
           </Text>
           
           <Text 
@@ -278,7 +297,7 @@ const AutoDetectedCardsScreen = ({ navigation, route }) => {
                             {card.bankName}
                           </Text>
                           <Text variant="body2" color="white" style={{ opacity: 0.8 }}>
-                            {card.cardType}
+                            Credit Card
                           </Text>
                         </View>
                       </View>
@@ -310,7 +329,7 @@ const AutoDetectedCardsScreen = ({ navigation, route }) => {
                     }}>
                       <View>
                         <Text variant="caption" color="white" style={{ opacity: 0.8 }}>
-                          Current Balance
+                          Outstanding Balance
                         </Text>
                         <Text variant="h5" color="white" weight="600">
                           {card.currentBalance ? formatCurrency(card.currentBalance) : 'N/A'}

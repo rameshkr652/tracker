@@ -1,72 +1,72 @@
-// src/screens/SplashScreen.js - Splash Screen with Intelligent Navigation
+// src/screens/SplashScreen.js - Fixed Splash Screen with Proper Navigation
 import React, { useEffect, useState } from 'react';
 import { View, PermissionsAndroid, Platform } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { Screen, Text, Button } from '../components';
+import { Screen, Text, Button, LoadingSpinner } from '../components';
 import { colors, spacing } from '../styles';
 import { useDebt } from '../context/DebtContext';
-import StorageService from '../services/storage/StorageService';
 
 const SplashScreen = ({ navigation }) => {
   const {
     creditCards,
     hasCompletedOnboarding,
-    hasGrantedSMSPermission,
-    setAppState
+    initialLoading,        // NEW: Wait for initial data loading
+    dataLoaded,           // NEW: Flag to know when data is ready
+    error,
   } = useDebt();
   
-  const [isLoading, setIsLoading] = useState(true);
-  const [appReady, setAppReady] = useState(false);
+  const [navigationReady, setNavigationReady] = useState(false);
 
+  // FIXED: Wait for context to load data before making navigation decisions
   useEffect(() => {
-    initializeApp();
-  }, []);
+    // Only proceed with navigation logic after data is loaded
+    if (dataLoaded && !initialLoading) {
+      checkAppStateAndNavigate();
+    }
+  }, [dataLoaded, initialLoading, creditCards, hasCompletedOnboarding]);
 
-  const initializeApp = async () => {
+  const checkAppStateAndNavigate = async () => {
     try {
-      console.log('🚀 Initializing app...');
+      console.log('🧭 Checking app state for navigation...');
+      console.log('   - Credit cards found:', creditCards.length);
+      console.log('   - Onboarding completed:', hasCompletedOnboarding);
       
-      // Load app state from storage
-      const appState = await StorageService.getAppState();
-      const existingCards = await StorageService.getCreditCards();
-      const existingTransactions = await StorageService.getTransactions();
-      
-      console.log('📊 App State:', appState);
-      console.log('💳 Existing Cards:', existingCards.length);
-      console.log('💰 Existing Transactions:', existingTransactions.length);
-      
-      // Update context with stored state
-      await setAppState({
-        hasCompletedOnboarding: appState.hasCompletedOnboarding || false,
-        hasGrantedSMSPermission: appState.hasGrantedSMSPermission || false,
-        lastSMSScan: appState.lastSMSScan,
-        hasParsedSMS: existingCards.length > 0,
-      });
-
-      // Check current SMS permission status
+      // Check SMS permission status
       const hasCurrentSMSPermission = await checkSMSPermission();
+      console.log('   - SMS permission:', hasCurrentSMSPermission);
       
-      console.log('🔐 Current SMS Permission:', hasCurrentSMSPermission);
-      console.log('✅ Has Completed Onboarding:', appState.hasCompletedOnboarding);
-      
-      // Wait a bit for splash screen effect
+      // Wait a moment for splash screen effect
       setTimeout(() => {
-        setIsLoading(false);
-        setAppReady(true);
-        
-        // Navigate based on app state
-        navigateBasedOnState(appState, existingCards, hasCurrentSMSPermission);
-      }, 1500); // Reduced from 2000ms to 1500ms
+        makeNavigationDecision();
+      }, 1000); // Reduced splash time
       
     } catch (error) {
-      console.error('Error initializing app:', error);
-      setIsLoading(false);
-      setAppReady(true);
-      // Navigate to onboarding on error
-      setTimeout(() => {
-        console.log('🔄 Error occurred, showing onboarding');
-      }, 500);
+      console.error('❌ Error during app state check:', error);
+      // On error, show splash screen with get started button
+      setNavigationReady(true);
     }
+  };
+
+  const makeNavigationDecision = () => {
+    console.log('🚀 Making navigation decision...');
+    
+    // PRIORITY 1: If user has credit cards (from previous SMS scan), go to main app
+    if (creditCards.length > 0) {
+      console.log('✅ User has existing cards - navigating to MainTabs');
+      navigation.replace('MainTabs');
+      return;
+    }
+
+    // PRIORITY 2: If user completed onboarding but no cards (maybe deleted SMS)
+    if (hasCompletedOnboarding) {
+      console.log('✅ Onboarding completed but no cards - navigating to MainTabs');
+      navigation.replace('MainTabs');
+      return;
+    }
+
+    // PRIORITY 3: First-time user - show splash with get started button
+    console.log('🆕 First-time user - showing splash with get started');
+    setNavigationReady(true);
   };
 
   const checkSMSPermission = async () => {
@@ -89,37 +89,123 @@ const SplashScreen = ({ navigation }) => {
     }
   };
 
-  const navigateBasedOnState = (appState, existingCards, hasCurrentSMSPermission) => {
-    console.log('🧭 Navigation Decision:');
-    console.log('   - Cards found:', existingCards.length);
-    console.log('   - Onboarding completed:', appState.hasCompletedOnboarding);
-    console.log('   - SMS permission:', hasCurrentSMSPermission);
-    
-    // PRIORITY 1: If user has completed initial setup (has cards), go directly to main app
-    // This ensures returning users skip all onboarding screens
-    if (existingCards.length > 0) {
-      console.log('✅ Returning user with cards - navigating to MainTabs');
-      navigation.replace('MainTabs');
-      return;
-    }
-
-    // PRIORITY 2: If user has completed onboarding but no cards found, go to main app anyway
-    // (Maybe they deleted SMS or cards were not detected)
-    if (appState.hasCompletedOnboarding) {
-      console.log('✅ Onboarding completed but no cards - navigating to MainTabs');
-      navigation.replace('MainTabs');
-      return;
-    }
-
-    // PRIORITY 3: First-time users - show splash screen with "Get Started" button
-    // Don't auto-navigate, let user initiate the onboarding process
-    console.log('🆕 First-time user detected - showing splash screen with Get Started button');
-  };
-
   const handleGetStarted = () => {
+    console.log('🎯 User clicked Get Started - navigating to BankSelection');
     navigation.navigate('BankSelection');
   };
 
+  // FIXED: Show loading screen while context loads initial data
+  if (initialLoading || !dataLoaded) {
+    return (
+      <LinearGradient
+        colors={[colors.primaryColor, colors.secondaryColor]}
+        style={{ flex: 1 }}
+      >
+        <Screen safe style={{ backgroundColor: 'transparent' }}>
+          <View style={{ 
+            flex: 1, 
+            justifyContent: 'center', 
+            alignItems: 'center',
+          }}>
+            
+            {/* App Logo */}
+            <View style={{
+              width: 100,
+              height: 100,
+              borderRadius: 50,
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: spacing.xl,
+            }}>
+              <Text variant="h1" color="white" weight="800">
+                💳
+              </Text>
+            </View>
+
+            {/* App Title */}
+            <Text 
+              variant="h1" 
+              color="white" 
+              weight="700"
+              align="center"
+              style={{ marginBottom: spacing.md }}
+            >
+              DebtTracker
+            </Text>
+
+            {/* Loading State */}
+            <View style={{ marginTop: spacing.xl }}>
+              <LoadingSpinner size="large" color="white" />
+              <Text 
+                variant="body1" 
+                color="white" 
+                align="center"
+                style={{ 
+                  marginTop: spacing.md,
+                  opacity: 0.9 
+                }}
+              >
+                {error ? 'Loading failed, please wait...' : 'Loading your data...'}
+              </Text>
+            </View>
+            
+          </View>
+        </Screen>
+      </LinearGradient>
+    );
+  }
+
+  // FIXED: Show splash with get started only for first-time users
+  if (!navigationReady) {
+    return (
+      <LinearGradient
+        colors={[colors.primaryColor, colors.secondaryColor]}
+        style={{ flex: 1 }}
+      >
+        <Screen safe style={{ backgroundColor: 'transparent' }}>
+          <View style={{ 
+            flex: 1, 
+            justifyContent: 'center', 
+            alignItems: 'center',
+          }}>
+            
+            {/* App Logo */}
+            <View style={{
+              width: 100,
+              height: 100,
+              borderRadius: 50,
+              backgroundColor: 'rgba(255,255,255,0.2)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: spacing.xl,
+            }}>
+              <Text variant="h1" color="white" weight="800">
+                💳
+              </Text>
+            </View>
+
+            {/* Loading Indicator */}
+            <LoadingSpinner size="large" color="white" />
+            <Text 
+              variant="body1" 
+              color="white" 
+              align="center"
+              style={{ 
+                marginTop: spacing.md,
+                opacity: 0.9 
+              }}
+            >
+              Preparing your app...
+            </Text>
+            
+          </View>
+        </Screen>
+      </LinearGradient>
+    );
+  }
+
+  // Show welcome screen for first-time users
   return (
     <LinearGradient
       colors={[colors.primaryColor, colors.secondaryColor]}
@@ -129,7 +215,7 @@ const SplashScreen = ({ navigation }) => {
         
         <View style={{ 
           flex: 1, 
-          justifyContent: 'center', 
+          justifyContent: 'center',
           alignItems: 'center',
         }}>
           
